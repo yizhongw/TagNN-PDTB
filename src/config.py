@@ -19,6 +19,7 @@ def parse_args():
     train_parser.add_argument('--encoder',
                               choices=['lstm', 'bi-lstm', 'gru', 'bi-gru', 'child-sum-lstm', 'binary-tree-lstm'],
                               default='child-sum-lstm', help='argument encoder type')
+    train_parser.add_argument('--attention', action='store_true', help='use attention')
     train_parser.add_argument('--batch_size', default=25, type=int,
                               help='batch size for optimizer updates')
     train_parser.add_argument('--epochs', default=15, type=int,

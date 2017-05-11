@@ -22,10 +22,14 @@ def prepare_data():
                     paths.dev_sections]
     test_sections = [os.path.join(paths.json_data_dir, '{:02}'.format(section_num)) for section_num in
                      paths.test_sections]
-    train_dataset, dev_dataset, test_dataset = PDTBDataSet(train_sections, tree_type=args.tree_type), \
-                                               PDTBDataSet(dev_sections, tree_type=args.tree_type), \
-                                               PDTBDataSet(test_sections, tree_type=args.tree_type)
-    assert train_dataset.consistent_with(dev_dataset) and dev_dataset.consistent_with(test_dataset)
+    train_dataset, dev_dataset, test_dataset = PDTBDataSet(train_sections, tree_type=args.tree_type, level=args.level), \
+                                               PDTBDataSet(dev_sections, tree_type=args.tree_type, level=args.level), \
+                                               PDTBDataSet(test_sections, tree_type=args.tree_type, level=args.level)
+    if not (train_dataset.consistent_with(dev_dataset) and dev_dataset.consistent_with(test_dataset)):
+        print('Dataset labels are not consistent.')
+        print('Train: {}'.format(sorted(train_dataset.label_map.keys())))
+        print('Dev: {}'.format(sorted(dev_dataset.label_map.keys())))
+        print('Test: {}'.format(sorted(test_dataset.label_map.keys())))
     print('Size of train set: {}, dev set: {}, test set: {}'.format(len(train_dataset), len(dev_dataset),
                                                                     len(test_dataset)))
     # save the dataset
@@ -55,21 +59,24 @@ def train_model():
         vocab_size=vocab.size(),
         embed_dim=vocab.embed_dim,
         model_config=ModelConfig,
-        use_cuda=args.cuda
+        use_cuda=args.cuda,
+        attention=args.attention
     )
     # init with pre-trained embeddings
     model.argument_encoder.emb.weight.data.copy_(vocab.embeddings)
+    # model.argument_encoder.emb.weight.requires_grad = False
     criterion = nn.CrossEntropyLoss()
+    params_to_train = filter(lambda p: p.requires_grad, model.parameters())
     if args.cuda:
         model.cuda(), criterion.cuda()
     if args.optim == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.SGD(params_to_train, lr=args.lr, weight_decay=args.wd)
     elif args.optim == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.Adam(params_to_train, lr=args.lr, weight_decay=args.wd)
     elif args.optim == 'adagrad':
-        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
+        optimizer = optim.Adagrad(params_to_train, lr=args.lr, weight_decay=args.wd)
     elif args.optim == 'rprop':
-        optimizer = optim.Rprop(model.parameters(), lr=args.lr)
+        optimizer = optim.Rprop(params_to_train, lr=args.lr)
     trainer = Trainer(model, criterion, optimizer, args.cuda)
     best_dev_f1 = 0
     for epoch in range(args.epochs):

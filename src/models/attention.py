@@ -17,21 +17,25 @@ class AttentionNet(nn.Module):
         self.softmax = nn.Softmax()
 
     def forward(self, att_vectors, ref_vector):
-        h = torch.tanh(self.wh(att_vectors) + self.wv(ref_vector.expand(att_vectors.size(0), self.ref_vector_dim)))
+        ref_vectors = ref_vector.expand(att_vectors.size(0), self.ref_vector_dim)
+        h = torch.tanh(self.wh(att_vectors) + self.wv(ref_vectors))
         h = self.ws(h)
         h = h.view(1, -1)
-        att_weights = self.softmax(h).squeeze(0)
-        return attention_mul(att_vectors, att_weights)
+        att_weights = self.softmax(h)
+        return torch.mm(att_weights, att_vectors)
 
 
-def attention_mul(att_vectors, att_weights):
-    attn_vectors = None
-    for i in range(att_vectors.size(0)):
-        h_i = att_vectors[i].unsqueeze(0)
-        a_i = att_weights[i].unsqueeze(1).expand_as(h_i)
-        h_i = a_i * h_i
-        if attn_vectors is None:
-            attn_vectors = h_i
-        else:
-            attn_vectors = torch.cat((attn_vectors, h_i), 0)
-    return torch.sum(attn_vectors, 0)
+# class AttentionNet(nn.Module):
+#     def __init__(self, att_vectors_dim, ref_vector_dim):
+#         super(AttentionNet, self).__init__()
+#         self.att_vectors_dim = att_vectors_dim
+#         self.ref_vector_dim = ref_vector_dim
+#         self.wr = nn.Linear(ref_vector_dim, att_vectors_dim)
+#         self.softmax = nn.Softmax()
+#
+#     def forward(self, att_vectors, ref_vector):
+#         h = self.wr(ref_vector)
+#         h = torch.mm(att_vectors, torch.transpose(h, 0, 1))
+#         h = h.view(1, -1)
+#         att_weights = self.softmax(h)
+#         return torch.mm(att_weights, att_vectors)

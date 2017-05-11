@@ -12,6 +12,7 @@ from utils.pdtb import PDTBInstance
 
 instance_cnt = 0
 
+
 def load_pipe_file(fpath, level, types=None):
     with open(fpath, 'r', encoding='ISO-8859-1') as fin:
         lines = fin.readlines()
@@ -34,7 +35,10 @@ def convert_one_file(fpath, save_dir, arg_annotate_func):
         inst.arg2_parse_result = arg_annotate_func(inst.arg2)
         inst.arg1_words, inst.arg1_dep_tree, inst.arg1_const_tree = extract_from_json_ob(inst.arg1_parse_result)
         inst.arg2_words, inst.arg2_dep_tree, inst.arg2_const_tree = extract_from_json_ob(inst.arg2_parse_result)
-        # assert that the tree size is compatible
+        # print(len(inst.arg2_words))
+        # print(inst.arg2_dep_tree.get_size())
+        # print(inst.arg2_const_tree.leaf_num)
+        # print(inst.arg2_const_tree.get_size())
         assert len(inst.arg1_words) == inst.arg1_dep_tree.get_size() == inst.arg1_const_tree.leaf_num <= inst.arg1_const_tree.get_size()
         assert len(inst.arg2_words) == inst.arg2_dep_tree.get_size() == inst.arg2_const_tree.leaf_num <= inst.arg2_const_tree.get_size()
         with open(os.path.join(save_dir, '{}.{}.pickle'.format(basename_prefix, idx)), 'wb') as fout:
@@ -45,33 +49,48 @@ def convert_one_file(fpath, save_dir, arg_annotate_func):
 
 
 def extract_from_json_ob(json_ob, lowercase=True, use_lemma=True, replace_num=True):
-    sentence_info = json_ob['sentences'][0]
-    # extract the words of the sentence
-    words = []
-    for token in sentence_info['tokens']:
-        word = token['lemma'] if use_lemma else token['word']
-        word = word.lower() if lowercase else word
-        if replace_num and any(c.isdigit() for c in word):
-            word = re.sub('[.|,|/| ]', '', word.lstrip('-'))
-            if word.isdigit():
-                word = NUM_WORD
-        words.append(word)
-    # build the dependency tree
-    nodes = [DepNode(word_idx) for word_idx in range(len(words))]
-    root_node = None
-    for dep in sentence_info['basicDependencies']:
-        if dep['governor'] == 0:
-            root_node = nodes[dep['dependent']-1]
-        else:
-            nodes[dep['governor']-1].add_child(nodes[dep['dependent']-1])
-    dep_tree = DepTree()
-    dep_tree.assign_root(root_node)
-    # build the constituency tree
-    const_tree = ConstTree()
-    const_tree.load_from_string(sentence_info['parse'])
-    const_tree.compress()
-    const_tree.binarize()
-    return words, dep_tree, const_tree
+    processed_words = []
+    dep_trees = []
+    const_trees = []
+    # there may be multiple sentences
+    for sentence_info in json_ob['sentences']:
+        # extract the words of the sentence
+        sent_words = []
+        for token in sentence_info['tokens']:
+            word = token['lemma'] if use_lemma else token['word']
+            word = word.lower() if lowercase else word
+            if replace_num and any(c.isdigit() for c in word):
+                word = re.sub('[.|,|/| ]', '', word.lstrip('-'))
+                if word.isdigit():
+                    word = NUM_WORD
+            sent_words.append(word)
+        # build the dependency tree
+        nodes = [DepNode(len(processed_words) + word_idx) for word_idx in range(len(sent_words))]
+        root_node = None
+        for dep in sentence_info['basicDependencies']:
+            if dep['governor'] == 0:
+                root_node = nodes[dep['dependent'] - 1]
+            else:
+                nodes[dep['governor'] - 1].add_child(nodes[dep['dependent'] - 1])
+        dep_tree = DepTree()
+        dep_tree.assign_root(root_node)
+        dep_trees.append(dep_tree)
+        # build the constituency tree
+        const_tree = ConstTree()
+        const_tree.load_from_string(sentence_info['parse'])
+        const_tree.compress()
+        const_tree.binarize()
+        const_trees.append(const_tree)
+        # add the sent_words to processed_words
+        processed_words.extend(sent_words)
+    if len(dep_trees) > 1:
+        for dep_tree in dep_trees[1:]:
+            dep_trees[0].merge(dep_tree)
+    if len(const_trees) > 1:
+        for const_tree in const_trees[1:]:
+            const_trees[0].merge(const_tree)
+        const_trees[0].binarize()
+    return processed_words, dep_trees[0], const_trees[0]
 
 
 def extract_from_conll_str(conll_str, lowercase=True, use_lemma=True, replace_num=True):
@@ -119,7 +138,7 @@ if __name__ == '__main__':
     annotate = lambda x: core_nlp.annotate(x, properties={
         'annotators': 'tokenize,ssplit,pos,lemma,parse,depparse',
         'outputFormat': 'json',
-        'ssplit.isOneSentence': True
+        # 'ssplit.isOneSentence': True
     })
     for section in sections:
         raw_sec_dir = os.path.join(raw_dir, section)

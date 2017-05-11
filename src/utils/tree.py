@@ -25,6 +25,9 @@ class DepTree:
     def assign_root(self, node):
         self.root = node
 
+    def merge(self, a_tree):
+        self.root.add_child(a_tree.root)
+
     def get_size(self):
         if self.size is None:
             self.size = 0
@@ -107,6 +110,10 @@ class ConstTree:
                 # else, keep push into the stack
                 stack.append(token)
         self.root = stack[0]
+
+    def merge(self, a_tree):
+        self.root.add_child(a_tree.root)
+        self.leaf_num += a_tree.leaf_num
 
     def get_size(self):
         if self.size is None:

@@ -51,13 +51,13 @@ class ChildSumTreeLSTM(nn.Module):
 
     def get_child_states(self, node):
         if len(node.children) == 0:
-            child_c = Variable(torch.zeros(1, 1, self.hidden_size), requires_grad=False)
-            child_h = Variable(torch.zeros(1, 1, self.hidden_size), requires_grad=False)
+            child_c = Variable(torch.zeros(1, 1, self.hidden_size))
+            child_h = Variable(torch.zeros(1, 1, self.hidden_size))
             if self.use_cuda:
                 child_c, child_h = child_c.cuda(), child_h.cuda()
         else:
-            child_c = Variable(torch.Tensor(node.children_num, 1, self.hidden_size), requires_grad=False)
-            child_h = Variable(torch.Tensor(node.children_num, 1, self.hidden_size), requires_grad=False)
+            child_c = Variable(torch.Tensor(node.children_num, 1, self.hidden_size))
+            child_h = Variable(torch.Tensor(node.children_num, 1, self.hidden_size))
             if self.use_cuda:
                 child_c, child_h = child_c.cuda(), child_h.cuda()
             for idx in range(node.children_num):

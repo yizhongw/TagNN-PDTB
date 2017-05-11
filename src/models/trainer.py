@@ -3,7 +3,7 @@
 # author: yizhong
 # created_at: 17-5-2 下午10:54
 from sys import stdout
-import time
+from datetime import datetime
 import torch
 from utils.const import UNK_WORD
 from torch.autograd import Variable
@@ -23,18 +23,10 @@ class Trainer:
         self.model.train()
         self.optimizer.zero_grad()
         loss, k = 0.0, 0
-        if dynamic_sample:
-            train_perf_by_label = {label: {'correct': 0, 'total': 10, 'acc': 0}
-                                   for label in range(self.model.num_classes)}
-        else:
-            indices = torch.randperm(len(dataset))
-        start_time = time.strftime('%H:%M:%S', time.gmtime())
+        indices = torch.randperm(len(dataset))
+        start_time = str(datetime.now().time())
         for idx in range(len(dataset)):
-            if dynamic_sample:
-                least_perf_label = min(train_perf_by_label.keys(), key=lambda x: train_perf_by_label[x]['acc'])
-                ltree, lsent, rtree, rsent, label = dataset.get_item_by_label(least_perf_label)
-            else:
-                ltree, lsent, rtree, rsent, label = dataset[indices[idx]]
+            ltree, lsent, rtree, rsent, label = dataset[indices[idx]]
             linput = Variable(torch.LongTensor(vocab.convert_words2ids(lsent, UNK_WORD)))
             rinput = Variable(torch.LongTensor(vocab.convert_words2ids(rsent, UNK_WORD)))
             target = Variable(torch.LongTensor([label]))
@@ -43,12 +35,9 @@ class Trainer:
                 target = target.cuda()
             pred, score = self.model(ltree, linput, rtree, rinput)
             err = self.criterion(score, target)
+            # divide err by batch_size so that err.backward() accumulate the average gradients
+            err = err / batch_size
             loss += err.data[0]
-            if dynamic_sample:
-                correct = pred.data.eq(target.data).cpu().sum()
-                train_perf_by_label[label]['correct'] += correct
-                train_perf_by_label[label]['total'] += 1
-                train_perf_by_label[label]['acc'] = train_perf_by_label[label]['correct'] / train_perf_by_label[label]['total']
             err.backward()
             k += 1
             if k % batch_size == 0:

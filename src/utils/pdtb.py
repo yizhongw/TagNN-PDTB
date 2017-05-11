@@ -49,8 +49,12 @@ class PDTBDataSet(Dataset):
                     continue
                 with open(os.path.join(section_dir, file), 'rb') as fin:
                     inst = pickle.load(fin)
-                    if inst.type == 'Implicit':
+                    if inst.type == 'Implicit' and len(inst.sems) == 1:
                         inst.sem = get_subtype(inst.sem, self.level)
+                        if self.level == 2 and inst.sem in ['Comparison.Pragmatic contrast', 'Contingency',
+                                                            'Contingency.Condition',
+                                                            'Contingency.Pragmatic condition', 'Expansion.Exception']:
+                            continue
                         instances.append(inst)
         return instances
 
