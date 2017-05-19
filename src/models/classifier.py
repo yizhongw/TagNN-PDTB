@@ -11,35 +11,43 @@ from models.attention import AttentionNet
 
 
 class RelationClassifier(nn.Module):
-    def __init__(self, encoder_type, num_classes, vocab_size, embed_dim, model_config, use_cuda=True, attention=False):
+    def __init__(self, encoder_type, num_classes, vocab_size, embed_dim,
+                 model_config, drop_rate, use_cuda=True, attention=False):
         super(RelationClassifier, self).__init__()
         self.encoder_type = encoder_type
         self.num_classes = num_classes
         self.use_cuda = use_cuda
         self.attention = attention
+        self.dropout = nn.Dropout(drop_rate)
         self.argument_encoder = self.get_argument_encoder(encoder_type, vocab_size, embed_dim,
                                                           model_config.lstm_hidden_size, use_cuda)
         if self.attention:
-            self.merge_fc = nn.Sequential(nn.Linear(3 * model_config.lstm_hidden_size, model_config.lstm_hidden_size),
+            self.merge_fc = nn.Sequential(nn.Linear(2 * model_config.lstm_hidden_size, model_config.lstm_hidden_size),
                                           nn.ReLU())
             self.attention_net = AttentionNet(att_vectors_dim=model_config.lstm_hidden_size,
                                               ref_vector_dim=model_config.lstm_hidden_size)
-        self.final_fc = nn.Linear(3 * model_config.lstm_hidden_size, num_classes)
+
+        self.out = nn.Linear(3 * model_config.lstm_hidden_size, num_classes)
+        # self.out = nn.Sequential(nn.Linear(3 * model_config.lstm_hidden_size, model_config.output_hidden_size),
+        #                          nn.ReLU(),
+        #                          self.dropout,
+        #                          nn.Linear(model_config.output_hidden_size, model_config.output_hidden_size),
+        #                          nn.ReLU(),
+        #                          self.dropout,
+        #                          nn.Linear(model_config.output_hidden_size, num_classes))
 
     def forward(self, arg1_tree, arg1_words, arg2_tree, arg2_words):
-        # print(arg1_tree.to_string())
-        # print(arg2_tree.to_string())
         arg1_outputs, arg1_hidden = self.encode_argument(arg1_tree, arg1_words)
         arg2_outputs, arg2_hidden = self.encode_argument(arg2_tree, arg2_words)
         if self.attention:
-            arg1_mean = torch.mean(arg1_outputs, 0)
-            arg2_mean = torch.mean(arg2_outputs, 0)
-            arg12_merge = self.merge_fc(torch.cat([arg1_mean, arg2_mean, arg1_mean - arg2_mean], 1))
-            arg1_att = self.attention_net(arg1_outputs, arg12_merge)
-            arg2_att = self.attention_net(arg2_outputs, arg12_merge)
-            score = self.final_fc(torch.cat([arg1_att, arg2_att, arg1_att - arg2_att], 1))
+            # arg1_mean = torch.mean(arg1_outputs, 0)
+            # arg2_mean = torch.mean(arg2_outputs, 0)
+            # arg12_merge = self.merge_fc(torch.cat([arg1_hidden, arg2_hidden], 1))
+            arg1_att = self.attention_net(arg1_outputs, arg2_hidden)
+            arg2_att = self.attention_net(arg2_outputs, arg1_hidden)
+            score = self.out(torch.cat([arg1_att, arg2_att, arg1_att - arg2_att], 1))
         else:
-            score = self.final_fc(torch.cat([arg1_hidden, arg2_hidden, arg1_hidden - arg2_hidden], 1))
+            score = self.out(torch.cat([arg1_hidden, arg2_hidden, arg1_hidden - arg2_hidden], 1))
         _, pred = torch.max(score, 1)
         return pred, score
 

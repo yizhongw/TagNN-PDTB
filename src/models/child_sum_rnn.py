@@ -37,29 +37,30 @@ class ChildSumTreeLSTM(nn.Module):
         return node.state
 
     def node_forward(self, inputs, child_c, child_h):
-        child_h_sum = torch.sum(torch.squeeze(child_h, 1), 0)
+        child_h_sum = torch.sum(child_h, 0)
         i = torch.sigmoid(self.ix(inputs) + self.ih(child_h_sum))
         o = torch.sigmoid(self.ox(inputs) + self.oh(child_h_sum))
         fi = self.fx(inputs)
-        f = torch.cat([self.fh(child_hi) + fi for child_hi in child_h], 0)
+        f = torch.cat([self.fh(child_hi) + fi for child_hi in torch.unsqueeze(child_h, 1)], 0)
         f = torch.sigmoid(f)
-        fc = torch.mul(f, torch.squeeze(child_c, 1))
+        fc = torch.mul(f, child_c)
         u = torch.tanh(self.ux(inputs) + self.uh(child_h_sum))
         c = torch.mul(i, u) + torch.sum(fc, 0)
         h = torch.mul(o, torch.tanh(c))
         return c, h
 
     def get_child_states(self, node):
+        child_c, child_h = None, None
         if len(node.children) == 0:
-            child_c = Variable(torch.zeros(1, 1, self.hidden_size))
-            child_h = Variable(torch.zeros(1, 1, self.hidden_size))
+            child_c = Variable(torch.zeros(1, self.hidden_size))
+            child_h = Variable(torch.zeros(1, self.hidden_size))
             if self.use_cuda:
                 child_c, child_h = child_c.cuda(), child_h.cuda()
         else:
-            child_c = Variable(torch.Tensor(node.children_num, 1, self.hidden_size))
-            child_h = Variable(torch.Tensor(node.children_num, 1, self.hidden_size))
-            if self.use_cuda:
-                child_c, child_h = child_c.cuda(), child_h.cuda()
             for idx in range(node.children_num):
-                child_c[idx], child_h[idx] = node.children[idx].state
+                if child_c is None and child_h is None:
+                    child_c, child_h = node.children[idx].state
+                else:
+                    child_c = torch.cat([child_c, node.children[idx].state[0]], 0)
+                    child_h = torch.cat([child_h, node.children[idx].state[1]], 0)
         return child_c, child_h

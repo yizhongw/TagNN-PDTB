@@ -67,10 +67,10 @@ class BinaryTreeLSTM(nn.Module):
                 right_c, right_h = right_c.cuda(), right_h.cuda()
             return (left_c, left_h), (right_c, right_h)
         else:
-            try:
-                assert len(node.children) == 2
-            except Exception as e:
-                print(len(node.children))
-                print(node.to_string())
-                raise e
+            # try:
+            #     assert len(node.children) == 2
+            # except Exception as e:
+            #     print(len(node.children))
+            #     print(node.to_string())
+            #     raise e
             return node.children[0].state, node.children[1].state

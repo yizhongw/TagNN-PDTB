@@ -22,9 +22,9 @@ def prepare_data():
                     paths.dev_sections]
     test_sections = [os.path.join(paths.json_data_dir, '{:02}'.format(section_num)) for section_num in
                      paths.test_sections]
-    train_dataset, dev_dataset, test_dataset = PDTBDataSet(train_sections, tree_type=args.tree_type, level=args.level), \
-                                               PDTBDataSet(dev_sections, tree_type=args.tree_type, level=args.level), \
-                                               PDTBDataSet(test_sections, tree_type=args.tree_type, level=args.level)
+    train_dataset = PDTBDataSet(train_sections, tree_type=args.tree_type, level=args.level, multiple_labels=False)
+    dev_dataset = PDTBDataSet(dev_sections, tree_type=args.tree_type, level=args.level, multiple_labels=True)
+    test_dataset = PDTBDataSet(test_sections, tree_type=args.tree_type, level=args.level, multiple_labels=True)
     if not (train_dataset.consistent_with(dev_dataset) and dev_dataset.consistent_with(test_dataset)):
         print('Dataset labels are not consistent.')
         print('Train: {}'.format(sorted(train_dataset.label_map.keys())))
@@ -39,6 +39,7 @@ def prepare_data():
     # build the vocab
     vocab = Vocab(mannual_add=[PAD_WORD, UNK_WORD, BOS_WORD, EOS_WORD, NUM_WORD])
     all_words = train_dataset.get_all_words() + dev_dataset.get_all_words() + test_dataset.get_all_words()
+    # all_words = train_dataset.get_all_words()
     for word in all_words:
         vocab.add(word)
     # load and initialize the embeddings
@@ -59,6 +60,7 @@ def train_model():
         vocab_size=vocab.size(),
         embed_dim=vocab.embed_dim,
         model_config=ModelConfig,
+        drop_rate=args.drop,
         use_cuda=args.cuda,
         attention=args.attention
     )
@@ -78,18 +80,18 @@ def train_model():
     elif args.optim == 'rprop':
         optimizer = optim.Rprop(params_to_train, lr=args.lr)
     trainer = Trainer(model, criterion, optimizer, args.cuda)
-    best_dev_f1 = 0
+    best_dev_acc = 0
     for epoch in range(args.epochs):
         print()
         trainer.train(train_dataset, vocab, batch_size=args.batch_size)
         # train_loss, train_acc, train_f1 = trainer.eval(train_dataset, vocab, 'trainset')
         # print('Train: loss {}, acc {}, f1 {}'.format(train_loss, train_acc, train_f1))
-        dev_loss, dev_acc, dev_f1 = trainer.eval(dev_dataset, vocab, 'devset')
-        print('Dev: loss {}, acc {}, f1 {}'.format(dev_loss, dev_acc, dev_f1))
-        test_loss, test_acc, test_f1 = trainer.eval(test_dataset, vocab, 'testset')
-        print('Test: loss {}, acc {}, f1 {}'.format(test_loss, test_acc, test_f1))
-        if dev_f1 > best_dev_f1:
-            best_dev_f1 = dev_f1
+        dev_acc = trainer.eval(dev_dataset, vocab, 'devset')
+        print('Dev: acc {}'.format(dev_acc))
+        test_acc = trainer.eval(test_dataset, vocab, 'testset')
+        print('Test: acc {}'.format(test_acc))
+        if dev_acc > best_dev_acc:
+            best_dev_acc = dev_acc
             print('Model saved to {}'.format(paths.best_model_path))
             torch.save(model.state_dict(), paths.best_model_path)
 
@@ -105,25 +107,17 @@ def test_model():
         vocab_size=vocab.size(),
         embed_dim=vocab.embed_dim,
         model_config=ModelConfig,
+        drop_rate=args.drop,
         use_cuda=args.cuda
     )
     model.load_state_dict(torch.load(paths.best_model_path))
-    criterion = nn.CrossEntropyLoss()
-    if args.cuda:
-        model.cuda(), criterion.cuda()
-    if args.optim == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.wd)
-    elif args.optim == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.wd)
-    elif args.optim == 'adagrad':
-        optimizer = optim.Adagrad(model.parameters(), lr=args.lr, weight_decay=args.wd)
-    trainer = Trainer(model, criterion, optimizer, args.cuda)
+    trainer = Trainer(model, use_cuda=args.cuda)
     # train_loss, train_acc, train_f1 = trainer.eval(train_dataset, vocab, 'trainset')
     # print('Train: loss {}, acc {}, f1 {}'.format(train_loss, train_acc, train_f1))
-    dev_loss, dev_acc, dev_f1 = trainer.eval(dev_dataset, vocab, 'devset')
-    print('Dev: loss {}, acc {}, f1 {}'.format(dev_loss, dev_acc, dev_f1))
-    test_loss, test_acc, test_f1 = trainer.eval(test_dataset, vocab, 'testset')
-    print('Test: loss {}, acc {}, f1 {}'.format(test_loss, test_acc, test_f1))
+    dev_acc = trainer.eval(dev_dataset, vocab, 'devset')
+    print('Dev: acc {}'.format(dev_acc))
+    test_acc = trainer.eval(test_dataset, vocab, 'testset')
+    print('Test: acc {}'.format(test_acc))
 
 
 def main():

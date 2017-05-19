@@ -13,14 +13,14 @@ def parse_args():
     prepare_parser = parser.add_argument_group('prepare settings')
     prepare_parser.add_argument('--tree_type', choices=['dependency', 'constituency'], default='dependency',
                                 help='which kind of tree type to use in dataset')
-    prepare_parser.add_argument('--level', type=int, choices=[1, 2, 3], default=1,
+    prepare_parser.add_argument('--level', type=int, choices=[1, 2, 3], default=2,
                                 help='the relation level')
     train_parser = parser.add_argument_group('train settings')
     train_parser.add_argument('--encoder',
                               choices=['lstm', 'bi-lstm', 'gru', 'bi-gru', 'child-sum-lstm', 'binary-tree-lstm'],
                               default='child-sum-lstm', help='argument encoder type')
     train_parser.add_argument('--attention', action='store_true', help='use attention')
-    train_parser.add_argument('--batch_size', default=25, type=int,
+    train_parser.add_argument('--batch_size', default=10, type=int,
                               help='batch size for optimizer updates')
     train_parser.add_argument('--epochs', default=15, type=int,
                               help='number of total epochs to run')
@@ -28,6 +28,8 @@ def parse_args():
                               metavar='LR', help='initial learning rate')
     train_parser.add_argument('--wd', default=1e-4, type=float,
                               help='weight decay (default: 1e-4)')
+    train_parser.add_argument('--drop', default=0, type=float,
+                              help='dropout rate')
     train_parser.add_argument('--optim', default='adagrad',
                               help='optimizer (default: adagrad)')
     train_parser.add_argument('--seed', default=123, type=int,
@@ -53,4 +55,4 @@ class PathConfig:
 
 class ModelConfig:
     lstm_hidden_size = 250
-    merge_output_size = 300
+    output_hidden_size = 250

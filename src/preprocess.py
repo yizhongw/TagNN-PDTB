@@ -13,13 +13,13 @@ from utils.pdtb import PDTBInstance
 instance_cnt = 0
 
 
-def load_pipe_file(fpath, level, types=None):
+def load_pipe_file(fpath, types=None):
     with open(fpath, 'r', encoding='ISO-8859-1') as fin:
         lines = fin.readlines()
     instances = []
     for line in lines:
         columns = line.split('|')
-        instance = PDTBInstance(columns, level)
+        instance = PDTBInstance(columns)
         if types is not None and instance.type not in types:
             continue
         instances.append(instance)
@@ -27,7 +27,7 @@ def load_pipe_file(fpath, level, types=None):
 
 
 def convert_one_file(fpath, save_dir, arg_annotate_func):
-    pdtb_instances = load_pipe_file(fpath, level=3, types=['Implicit'])
+    pdtb_instances = load_pipe_file(fpath, types=['Implicit'])
     basename_prefix = os.path.basename(fpath).split('.')[0]
     global instance_cnt
     for idx, inst in enumerate(pdtb_instances, 1):
