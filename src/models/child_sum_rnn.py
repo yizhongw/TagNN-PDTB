@@ -28,13 +28,24 @@ class ChildSumTreeLSTM(nn.Module):
         return outputs, final_state
 
     def recursive_forward(self, node, embeds, outputs):
-        for idx in range(node.children_num):
-            _ = self.recursive_forward(node.children[idx], embeds, outputs)
-        child_c, child_h = self.get_child_states(node)
-        node.state = self.node_forward(embeds[node.idx], child_c, child_h)
+        child_c, child_h = None, None
+        if len(node.children) == 0:
+            child_c = Variable(torch.zeros(1, self.hidden_size))
+            child_h = Variable(torch.zeros(1, self.hidden_size))
+            if self.use_cuda:
+                child_c, child_h = child_c.cuda(), child_h.cuda()
+        else:
+            for idx in range(node.children_num):
+                c, h = self.recursive_forward(node.children[idx], embeds, outputs)
+                if child_c is None and child_h is None:
+                    child_c, child_h = c, h
+                else:
+                    child_c = torch.cat([child_c, c], 0)
+                    child_h = torch.cat([child_h, h], 0)
+        node_state = self.node_forward(embeds[node.idx], child_c, child_h)
         # store the hidden state of every node to outputs
-        outputs.append(node.state[1])
-        return node.state
+        outputs.append(node_state[1])
+        return node_state
 
     def node_forward(self, inputs, child_c, child_h):
         child_h_sum = torch.sum(child_h, 0)
@@ -48,19 +59,3 @@ class ChildSumTreeLSTM(nn.Module):
         c = torch.mul(i, u) + torch.sum(fc, 0)
         h = torch.mul(o, torch.tanh(c))
         return c, h
-
-    def get_child_states(self, node):
-        child_c, child_h = None, None
-        if len(node.children) == 0:
-            child_c = Variable(torch.zeros(1, self.hidden_size))
-            child_h = Variable(torch.zeros(1, self.hidden_size))
-            if self.use_cuda:
-                child_c, child_h = child_c.cuda(), child_h.cuda()
-        else:
-            for idx in range(node.children_num):
-                if child_c is None and child_h is None:
-                    child_c, child_h = node.children[idx].state
-                else:
-                    child_c = torch.cat([child_c, node.children[idx].state[0]], 0)
-                    child_h = torch.cat([child_h, node.children[idx].state[1]], 0)
-        return child_c, child_h

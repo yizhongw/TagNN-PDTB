@@ -32,18 +32,35 @@ class BinaryTreeLSTM(nn.Module):
         return outputs, final_state
 
     def recursive_forward(self, node, embeds, outputs):
-        for idx in range(len(node.children)):
-            _ = self.recursive_forward(node.children[idx], embeds, outputs)
-        left_states, right_states = self.get_child_states(node)
+        # get states from children
+        child_states = []
+        if len(node.children) > 0:
+            assert len(node.children) == 2
+            for idx in range(len(node.children)):
+                child_state = self.recursive_forward(node.children[idx], embeds, outputs)
+                child_states.append(child_state)
+        else:
+            left_c = Variable(torch.zeros(1, self.hidden_size))
+            left_h = Variable(torch.zeros(1, self.hidden_size))
+            right_c = Variable(torch.zeros(1, self.hidden_size))
+            right_h = Variable(torch.zeros(1, self.hidden_size))
+            if self.use_cuda:
+                left_c, left_h = left_c.cuda(), left_h.cuda()
+                right_c, right_h = right_c.cuda(), right_h.cuda()
+            child_states.append((left_c, left_h))
+            child_states.append((right_c, right_h))
+        # binary tree
+        left_states, right_states = child_states[0], child_states[1]
+        # calculate the state of current node
         if node.idx is not None:
-            node.state = self.node_forward(embeds[node.idx], left_states, right_states)
+            node_state = self.node_forward(embeds[node.idx], left_states, right_states)
         else:
             embed = Variable(torch.zeros(1, self.embed_dim))
             if self.use_cuda:
                 embed = embed.cuda()
-            node.state = self.node_forward(embed, left_states, right_states)
-        outputs.append(node.state[1])
-        return node.state
+            node_state = self.node_forward(embed, left_states, right_states)
+        outputs.append(node_state[1])
+        return node_state
 
     def node_forward(self, inputs, left_states, right_states):
         left_c, left_h = left_states
@@ -55,22 +72,3 @@ class BinaryTreeLSTM(nn.Module):
         c = torch.mul(i, u) + torch.mul(f, left_c) + torch.mul(f, right_c)
         h = torch.mul(o, torch.tanh(c))
         return c, h
-
-    def get_child_states(self, node):
-        if len(node.children) == 0:
-            left_c = Variable(torch.zeros(1, self.hidden_size))
-            left_h = Variable(torch.zeros(1, self.hidden_size))
-            right_c = Variable(torch.zeros(1, self.hidden_size))
-            right_h = Variable(torch.zeros(1, self.hidden_size))
-            if self.use_cuda:
-                left_c, left_h = left_c.cuda(), left_h.cuda()
-                right_c, right_h = right_c.cuda(), right_h.cuda()
-            return (left_c, left_h), (right_c, right_h)
-        else:
-            # try:
-            #     assert len(node.children) == 2
-            # except Exception as e:
-            #     print(len(node.children))
-            #     print(node.to_string())
-            #     raise e
-            return node.children[0].state, node.children[1].state
