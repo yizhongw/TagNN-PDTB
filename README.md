@@ -2,7 +2,7 @@
 
 This repo contains the code for a state-of-the-art discourse relation classifier, trained and tested on [PDTB V2](https://catalog.ldc.upenn.edu/LDC2008T05).
 
-Here We implemented the Tree-LSTM and Tree-GRU models and enhanced them with pos-tag information. You can find more details in our paper at IJCNLP 2017: [Tag-Enhanced Tree-Structured Neural Networks for Implicit Discourse Relation Classiﬁcation]().
+Here We implemented the Tree-LSTM and Tree-GRU models and enhanced them with pos-tag information. You can find more details in our paper at IJCNLP 2017: [Tag-Enhanced Tree-Structured Neural Networks for Implicit Discourse Relation Classiﬁcation](https://eastonwang.github.io/papers/tag_nn_pdtb_2017.pdf).
 
 ## Data
 
