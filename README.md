@@ -15,7 +15,7 @@ To run the program, you can use the following command for preprocessing the data
 python main.py [--preprocess] [--prepare] [--train]
 ```
 
-For detailed useage, run `python main.py -h` to see the list of options.
+For detailed usage, run `python main.py -h` to see the list of options.
 
 ## License
 
