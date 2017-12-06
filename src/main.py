@@ -11,7 +11,7 @@ def parse_args():
     parser.add_argument('--preprocess', action='store_true',
                         help='tokenize and parse the pdtb pipe data')
     parser.add_argument('--prepare', action='store_true',
-                        help='prepare the vocab and format the data')
+                        help='prepare the vocab and format the dataset')
     parser.add_argument('--train', action='store_true',
                         help='train and evaluate the model')
     task_parser = parser.add_argument_group('tasks')
