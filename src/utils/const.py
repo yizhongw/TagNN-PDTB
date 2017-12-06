@@ -8,3 +8,5 @@ UNK_WORD = '<unk>'
 BOS_WORD = '<s>'
 EOS_WORD = '</s>'
 NUM_WORD = '<num>'
+
+PUNC_TAG = '<punc>'

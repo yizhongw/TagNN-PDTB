@@ -7,17 +7,17 @@ import torch.nn as nn
 
 
 class BasicLSTM(nn.Module):
-    def __init__(self, vocab_size, embed_dim, hidden_size, bidirectional, use_cuda):
+    def __init__(self, word_vocab_size, word_embed_dim, hidden_size, bidirectional, use_cuda):
         super(BasicLSTM, self).__init__()
         self.use_cuda = use_cuda
-        self.embed_dim = embed_dim
+        self.word_embed_dim = word_embed_dim
         self.hidden_size = hidden_size
         self.bidirectional = bidirectional
-        self.emb = nn.Embedding(vocab_size, embed_dim)
-        self.rnn = nn.LSTM(input_size=embed_dim, hidden_size=hidden_size, num_layers=1, bidirectional=bidirectional)
+        self.word_embed_func = nn.Embedding(word_vocab_size, word_embed_dim)
+        self.rnn = nn.LSTM(input_size=word_embed_dim, hidden_size=hidden_size, num_layers=1, bidirectional=bidirectional)
 
     def forward(self, inputs):
-        embeds = torch.unsqueeze(self.emb(inputs), 1)
+        embeds = torch.unsqueeze(self.word_embed_func(inputs), 1)
         outputs, (hn, cn) = self.rnn(embeds)
         if self.bidirectional:
             outputs = outputs.view(outputs.size(0), outputs.size(1), 2, -1)

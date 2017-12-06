@@ -39,10 +39,22 @@ class DepTree:
                     node_queue.append(child_node)
         return self.size
 
+    def bfs_tranverse(self):
+        pass
+
+    def post_order_tranverse(self, start_node=None, node_list=[]):
+        if start_node is None:
+            start_node = self.root
+        for child in start_node.children:
+            self.post_order_tranverse(start_node=child, node_list=node_list)
+        node_list.append(start_node)
+        return node_list
+
 
 class ConstNode:
-    def __init__(self, label, word_idx=None, children=None):
-        self.label = label
+    def __init__(self, tag, word=None, word_idx=None, children=None):
+        self.tag = tag
+        self.word = word
         self.idx = word_idx
         self.parent = None
         self.children = children if children is not None else []
@@ -54,12 +66,12 @@ class ConstNode:
     def to_string(self):
         """convert the node and its children to string"""
         output = '('
-        output += ' ' + self.label + ' '
+        output += ' ' + self.tag + ' '
         if self.children:
             for child_node in self.children:
                 output += child_node.to_string() + ' '
         else:
-            output += str(self.idx) + ' '
+            output += str(self.word) + ' '
         output += ')'
         return output
 
@@ -89,19 +101,19 @@ class ConstTree:
                 content.reverse()
                 if len(content) == 0:
                     raise ValueError('empty content!')
-                label = content.pop(0)
+                tag = content.pop(0)
                 # the leaf node with word
                 if not isinstance(content[0], ConstNode):
                     if len(content) > 1:
-                        print('Multiple words in one leaf node: ')
-                        print(content)
+                        # print('Multiple words in one leaf node: ')
+                        # print(content)
                         temp = ''.join(content)
                         content[0] = temp
                     self.leaf_num += 1
-                    node = ConstNode(label, word_idx=self.leaf_num-1)
+                    node = ConstNode(tag, word=content[0], word_idx=self.leaf_num-1)
                 # the internal node
                 else:
-                    node = ConstNode(label, children=content)
+                    node = ConstNode(tag, children=content)
                     for child_node in content:
                         assert isinstance(child_node, ConstNode)
                         child_node.parent = node
@@ -126,6 +138,25 @@ class ConstTree:
                     node_queue.append(child_node)
         return self.size
 
+    def bfs_tranverse(self):
+        node_list = []
+        queue = [self.root]
+        while queue:
+            node = queue.pop(0)
+            for child in node.children:
+                queue.append(child)
+            node_list.append(node)
+        return node_list
+
+    def post_order_tranverse(self, start_node=None, node_list=[]):
+        if start_node is None:
+            start_node = self.root
+        if len(start_node.children) > 0:
+            for child in start_node.children:
+                self.post_order_tranverse(start_node=child, node_list=node_list)
+        node_list.append(start_node)
+        return node_list
+
     def compress(self):
         """remove redundant internal node"""
         node_queue = [self.root]
@@ -149,7 +180,7 @@ class ConstTree:
             if len(node.children) > 2:
                 # Right-branching
                 child_1 = node.children.pop(0)
-                child_2 = ConstNode(label=node.label, children=[child for child in node.children])
+                child_2 = ConstNode(tag=node.tag, children=[child for child in node.children])
                 child_2.parent = node
                 for child in child_2.children:
                     child.parent = child_2

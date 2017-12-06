@@ -3,26 +3,27 @@
 # author: yizhong
 # created_at: 17-5-2 下午3:47
 import torch
+import torch.nn.init as init
 
 
 class Vocab(object):
     def __init__(self, filename=None, mannual_add=None, lower=False):
-        self.id2word = {}
-        self.word2id = {}
+        self.id2token = {}
+        self.token2id = {}
         self.lower = lower
         self.embeddings = None
         self.embed_dim = None
-        # set the mannual_add words to be zero initially
-        self.zero_embedding_words = mannual_add
+        # set the mannual_add tokens to be zero initially
+        self.zero_embedding_tokens = mannual_add
 
         if mannual_add is not None:
-            for word in mannual_add:
-                self.add(word)
+            for token in mannual_add:
+                self.add(token)
         if filename is not None:
             self.load_file(filename)
 
     def size(self):
-        return len(self.id2word)
+        return len(self.id2token)
 
     def load_file(self, filename):
         for line in open(filename, 'r'):
@@ -32,66 +33,71 @@ class Vocab(object):
     def get_id(self, key, default=None):
         key = key.lower() if self.lower else key
         try:
-            return self.word2id[key]
+            return self.token2id[key]
         except KeyError:
             return default
 
-    def get_word(self, idx, default=None):
+    def get_token(self, idx, default=None):
         try:
-            return self.id2word[idx]
+            return self.id2token[idx]
         except KeyError:
             return default
 
     def add(self, label):
         label = label.lower() if self.lower else label
-        if label in self.word2id:
-            idx = self.word2id[label]
+        if label in self.token2id:
+            idx = self.token2id[label]
         else:
-            idx = len(self.id2word)
-            self.id2word[idx] = label
-            self.word2id[label] = idx
+            idx = len(self.id2token)
+            self.id2token[idx] = label
+            self.token2id[label] = idx
         return idx
+
+    def init_embed(self, embed_dim):
+        self.embed_dim = embed_dim
+        self.embeddings = torch.Tensor(self.size(), embed_dim)
+        init.xavier_normal(self.embeddings)
 
     def load_pretrained_emb(self, embedding_path):
         glove_embeddings = {}
         with open(embedding_path, 'r') as fin:
             for line in fin:
                 contents = line.strip().split(' ')
-                word = contents[0]
-                glove_embeddings[word] = torch.Tensor(list(map(float, contents[1:])))
+                token = contents[0]
+                glove_embeddings[token] = torch.Tensor(list(map(float, contents[1:])))
                 if self.embed_dim is None:
                     self.embed_dim = len(contents) - 1
-        filtered_words = set(self.word2id.keys()) & set(glove_embeddings.keys())
-        # rebuild the word x id map
-        self.word2id = {}
-        self.id2word = {}
-        for word in self.zero_embedding_words:
-            self.add(word)
-        for word in filtered_words:
-            self.add(word)
+        filtered_tokens = set(self.token2id.keys()) & set(glove_embeddings.keys())
+        # rebuild the token x id map
+        self.token2id = {}
+        self.id2token = {}
+        for token in self.zero_embedding_tokens:
+            self.add(token)
+        for token in filtered_tokens:
+            self.add(token)
         # load embeddings
         self.embeddings = torch.Tensor(self.size(), self.embed_dim)
-        for word in self.zero_embedding_words:
-            self.embeddings[self.get_id(word)].zero_()
-        for word in self.word2id.keys():
-            if word in glove_embeddings:
-                self.embeddings[self.get_id(word)] = glove_embeddings[word]
+        for token in self.zero_embedding_tokens:
+            self.embeddings[self.get_id(token)].zero_()
+        for token in self.token2id.keys():
+            if token in glove_embeddings:
+                self.embeddings[self.get_id(token)] = glove_embeddings[token]
 
-    def convert_words2ids(self, words, unk_word, bos_word=None, eos_word=None):
-        """Convert words to ids, use unk_word if the word is not in vocab."""
+    def convert2ids(self, tokens, unk_token, bos_token=None, eos_token=None):
+        """Convert tokens to ids, use unk_token if the token is not in vocab."""
         vec = []
-        if bos_word is not None:
-            vec += [self.get_id(bos_word)]
-        unk = self.get_id(unk_word)
-        vec += [self.get_id(label, default=unk) for label in words]
-        if eos_word is not None:
-            vec += [self.get_id(eos_word)]
+        if bos_token is not None:
+            vec += [self.get_id(bos_token)]
+        unk = self.get_id(unk_token)
+        vec += [self.get_id(label, default=unk) for label in tokens]
+        if eos_token is not None:
+            vec += [self.get_id(eos_token)]
         return vec
 
-    def convert_ids2words(self, ids, stop_id=None):
-        words = []
+    def recover_from_ids(self, ids, stop_id=None):
+        tokens = []
         for i in ids:
-            words += [self.get_word(i)]
+            tokens += [self.get_token(i)]
             if stop_id is not None and i == stop_id:
                 break
-        return words
+        return tokens

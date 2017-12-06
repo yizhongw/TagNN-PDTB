@@ -4,13 +4,13 @@ from torch.autograd import Variable
 
 
 class ChildSumTreeLSTM(nn.Module):
-    def __init__(self, vocab_size, embed_dim, hidden_size, use_cuda):
+    def __init__(self, word_vocab_size, word_embed_dim, hidden_size, use_cuda):
         super(ChildSumTreeLSTM, self).__init__()
         self.use_cuda = use_cuda
-        self.embed_dim = embed_dim
+        self.embed_dim = word_embed_dim
         self.hidden_size = hidden_size
 
-        self.emb = nn.Embedding(vocab_size, embed_dim)
+        self.word_embed_func = nn.Embedding(word_vocab_size, word_embed_dim)
         self.ix = nn.Linear(self.embed_dim, self.hidden_size)
         self.ih = nn.Linear(self.hidden_size, self.hidden_size)
         self.fx = nn.Linear(self.embed_dim, self.hidden_size)
@@ -21,7 +21,7 @@ class ChildSumTreeLSTM(nn.Module):
         self.uh = nn.Linear(self.hidden_size, self.hidden_size)
 
     def forward(self, root_node, inputs):
-        embs = torch.unsqueeze(self.emb(inputs), 1)
+        embs = torch.unsqueeze(self.word_embed_func(inputs), 1)
         outputs = []
         final_state = self.recursive_forward(root_node, embs, outputs)
         outputs = torch.cat(outputs, 0)
