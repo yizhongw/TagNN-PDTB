@@ -6,8 +6,7 @@ Here We implemented the Tree-LSTM and Tree-GRU models and enhanced them with pos
 
 ## Data
 
-We trained and and tested our models on [PDTB V2](https://catalog.ldc.upenn.edu/LDC2008T05) dataset. You should download them and convert the PDTB into a "pipe" delimited file using the built-in tool in the dataset. And then you need to preprocess the data using the scripts in `preprocess.py`.
-
+We trained and and tested our models on [PDTB V2](https://catalog.ldc.upenn.edu/LDC2008T05) dataset. You should download them and convert the PDTB into a "pipe" delimited file using the built-in tool in the dataset. 
 
 ## Usage
 To run the program, you can use the following command for preprocessing the data, prepare the formatted dataset and train the models:
