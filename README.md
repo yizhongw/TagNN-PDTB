@@ -10,10 +10,10 @@ We trained and and tested our models on [PDTB V2](https://catalog.ldc.upenn.edu/
 
 
 ## Usage
-To run the program, you can use the following command for preparation, train and test:
+To run the program, you can use the following command for preprocessing the data, prepare the formatted dataset and train the models:
 
 ```
-python main.py [--prepare] [--train] [--test]
+python main.py [--preprocess] [--prepare] [--train]
 ```
 
 For detailed useage, run `python main.py -h` to see the list of options.
